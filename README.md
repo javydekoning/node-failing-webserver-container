@@ -61,3 +61,80 @@ It will send `JSON` logging to stdout in the form of:
   "msg": "request errored"
 })
 ```
+
+## Health Check examples:
+
+HealthChecks can be performed at several levels, like Container, LoadBalancer or even DNS. Below are some examples of how to do it on AWS.
+
+### Container Level:
+
+In the task definition via JSON:
+
+```json
+"healthCheck": {
+  "retries": 1,
+  "command": [
+    "CMD-SHELL",
+    "curl -f http://localhost:9091/health || exit 1"
+  ],
+  "timeout": 5,
+  "interval": 5,
+  "startPeriod": null
+},
+```
+
+Or via CDK:
+
+```ts
+const container = taskDef.addContainer('webserver', {
+  image: ecs.ContainerImage.fromAsset('node-failing-webserver-container'),
+  essential: true,
+  healthCheck: {
+    command: ['CMD-SHELL', 'curl -f http://localhost:9091/health || exit 1'],
+    interval: cdk.Duration.seconds(5),
+    retries: 1,
+  },
+});
+```
+
+Or via CloudFormation:
+
+```yaml
+Type: AWS::ECS::TaskDefinition
+Properties:
+  ContainerDefinitions:
+    - Essential: true
+      HealthCheck:
+        Command:
+          - CMD-SHELL
+          - curl -f http://localhost:9091/health || exit 1
+        Interval: 5
+        Retries: 1
+        Timeout: 5
+```
+
+### Loadbalancer Level:
+
+Via CDK:
+
+```ts
+svc.targetGroup.configureHealthCheck({
+  path: '/health',
+  unhealthyThresholdCount: 2,
+  interval: cdk.Duration.seconds(30),
+});
+```
+
+Or via CloudFormation:
+
+```
+Type: AWS::ElasticLoadBalancingV2::TargetGroup
+Properties:
+  HealthCheckIntervalSeconds: 30
+  HealthCheckPath: /health
+  Port: 80
+  Protocol: HTTP
+  TargetType: ip
+  UnhealthyThresholdCount: 2
+  VpcId: vpc-651a8b03
+```

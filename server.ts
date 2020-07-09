@@ -1,8 +1,5 @@
 import * as os from 'os';
 import * as pino from 'pino-http';
-
-const logger = pino.default();
-
 import {
   IncomingMessage,
   ServerResponse,
@@ -13,20 +10,21 @@ import {
 let healthCheckFailures: number = 0;
 let shouldErr: boolean = false;
 
-const host = os.hostname();
+const logger = pino.default();
 const resHeaders: OutgoingHttpHeaders = {
   content: 'text/html; charset=utf-8',
-  'X-Backend-Server': host,
+  'X-Backend-Server': os.hostname(),
 };
 
-let httpBody = (req: IncomingMessage): string => `
+const httpBody = (req: IncomingMessage): string => `
 I'm ${os.hostname()}.
 Process is up for: ${Math.floor(process.uptime())} sec.
-You've reached: ${req.url}
+You've reached: ${req.url} 
+Headers: ${JSON.stringify(req.headers)}
 Healthcheck has failed: ${healthCheckFailures} time(s).
 `;
 
-let generateResponse = (
+const generateResponse = (
   res: ServerResponse,
   statusCode: number,
   headers: OutgoingHttpHeaders,
@@ -42,7 +40,7 @@ const server = createServer((req: IncomingMessage, res: ServerResponse) => {
   req.log.info(`HealthCheck failed: ${healthCheckFailures} time(s)`);
 
   if (shouldErr === false) {
-    shouldErr = Math.floor(Math.random() * Math.floor(20)) == 0;
+    shouldErr = Math.floor(Math.random() * Math.floor(100)) == 0;
   }
 
   if (req.url == '/health' && shouldErr) {
